@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Data: raw API responses and large intermediates stay local
+data/raw/
+data/interim/
+
+# Node / site build
+node_modules/
+site/dist/
+
+# OS
+.DS_Store
