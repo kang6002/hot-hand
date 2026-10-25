@@ -17,5 +17,10 @@ NBA hot-hand website: Python pipeline → static JSON → static site (Vite + Ty
 - Downloads run locally, throttled, with retries and caching.
 
 ## Status
-- 2026-10-25: Milestone 1 complete (waiting for user OK): every 2025-26 player (284 tested, ≥ 300 FGA); pipeline download → clean → analyse → power → plots; outputs in `data/processed/` and `figures/`. Result: no BH discoveries; league effect −1.0 / −1.3 / −2.0 pp (k = 1/2/3), likely shot selection + putbacks (not yet controlled); power is low per player-season (see DECISIONS.md). Open: putback check now or keep in Milestone 4? Next: Milestone 2 (static site).
+- 2026-10-25: Milestone 1 done (commit 6a2cd2e): every 2025-26 player (284 tested, ≥ 300 FGA). Result: no BH discoveries; league effect −1.0 / −1.3 / −2.0 pp (k = 1/2/3), likely shot selection + putbacks (not yet controlled); power is low per player-season (see DECISIONS.md).
+- 2026-10-25: Milestone 2 complete (waiting for user OK, not yet committed): static site in `site/` (home + all 582 player pages, search, Vitest tests), data from `pipeline/build_json.py`. Open: putback check now or keep in Milestone 4? Next: Milestone 3.
 - Hosting: GitHub Pages (user has a GitHub account). Repo not yet pushed to GitHub; do that when we deploy.
+
+## How to run
+- Python: `.venv/bin/python pipeline/<step>.py 2025-26`, in order download → clean → analyse → power → plots → build_json; tests `.venv/bin/python -m pytest` (slow ones: `-m slow`).
+- Node lives in `~/.local/node` (installed without admin): `export PATH="$HOME/.local/node/bin:$PATH"`, then in `site/`: `npm run dev` (local site), `npm test`, `npm run build`.

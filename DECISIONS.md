@@ -123,3 +123,42 @@ Each entry: what we chose, why, and the alternatives considered.
   - `figures/<season>/player_<name>.png`: a prototype of the player page (raw FG% after makes/misses with Wilson CIs, labelled "not bias-corrected"; shuffle distribution with the real value for each k).
 - **Style:** colours from a validated reference data-viz palette, light mode. Ordered effect sizes use one blue ramp, light to dark. Hot/cold use the red ↔ blue pair (none needed this season). After makes/misses use categorical blue/orange. Lines are always identified by a legend plus direct labels where they fit. Every figure carries the NBA attribution. The palette validator needs Node.js, which isn't installed; the colours are the palette's documented, pre-validated steps.
 - **Alternatives:** Observable Plot right away (that's the site, Milestone 2; matplotlib is quicker for checking results).
+
+## 2026-10-25 — Hosting: GitHub Pages under the user's account
+- **Chose (user confirmed):** GitHub Pages, account `kang6002`. Creating the repository and the deploy Action happen in Milestone 3, and only after the user OKs the repository name and visibility.
+- **Why:** free and static (fits our "pipeline → JSON → static site" design), and gives the application a public link.
+
+## 2026-10-25 — Node.js installed in the home folder
+- **Chose (user's choice):** the official Node.js v24.22.1 LTS tarball from nodejs.org, SHA-256 checked against nodejs.org's SHASUMS256.txt, unpacked to `~/.local/node-v24.22.1-darwin-arm64` with a link at `~/.local/node`. No admin rights; delete the folder to uninstall. Use it with `export PATH="$HOME/.local/node/bin:$PATH"`.
+- **Alternatives:** the official .pkg installer (system-wide, needs admin); Homebrew (also needs admin, the biggest change).
+
+## 2026-10-25 — Site dependencies, pinned and at least two weeks old
+- **Chose:** Vite 8.3.4, TypeScript 6.0.3, Observable Plot 0.6.17, Vitest 5.0.3, each with an exact version in `site/package.json`. Installed with `npm install --before=2026-10-11`, so every indirect dependency was also at least two weeks old when installed. `site/package-lock.json` records every exact version (like `renv.lock`) and is committed. `npm audit`: 0 vulnerabilities. npm's install-script block was left on; the only package affected (`fsevents`) ships ready-built.
+- **Why:** brand-new releases are where broken or malicious versions usually show up. Waiting two weeks, plus a lockfile, makes the build reproducible.
+- **TypeScript 6, not 7:** 7.0 is the new native (Go) compiler and pulls in about 20 platform-specific binary packages; 6.0.3 is the mature JavaScript compiler. We only use it for type-checking (Vite strips the types itself), so we gain nothing from 7 yet.
+
+## 2026-10-25 — Site data: one small JSON per player
+- **Chose:** `pipeline/build_json.py` writes `site/public/data/`:
+  - `index.json`: id, name, FGA and tested flag for every player (search);
+  - `league.json`: league result per k, each tested player's effect, and the power curve;
+  - `players/<id>.json`, one file per player (≈ 1–8 KB): FG%, raw after-makes/misses with Wilson CIs, test results per k, the shuffle distribution as a 40-bin histogram (not 10,000 numbers), and each game's shots as a string like `"1101001"`.
+
+  2.5 MB in total, committed (processed output). A player page downloads about 10 KB.
+- **Why:** a static site has no server or database; the browser fetches only what it needs. Like saving `.rds` files for a Shiny app, but readable by any browser.
+- **Alternatives:** one big file (about 2.5 MB on every visit); raw CSVs (bigger, untyped, need parsing).
+
+## 2026-10-25 — Site structure and design
+- **Routing:** hash routes (`#/` and `#/player/<id>`), so it works on GitHub Pages without server configuration; `base: "./"` makes every path relative.
+- **Code:** `src/data.ts` (types mirroring the JSON, cached loading), `src/format.ts` (all numbers and wording, including the "no detectable effect" rule, in one place), `src/search.ts`, `src/charts.ts`, `src/pages/home.ts`, `src/pages/player.ts`.
+- **Player page:** verdict badge and a plain-English summary for k = 3; a "how sensitive is this?" sentence from the power curve (the nearest simulated shot count); the corrected effect with CIs for k = 1–3; raw FG% after makes/misses, clearly labelled "not bias-corrected"; the shuffle distributions with the real value; every shot of the season (drawn only when opened); limitations. Players under 300 FGA get the raw numbers, the shots, and a sentence saying why there's no test.
+- **Home:** league tiles for k = 1–3, a plain-English result, a "what this does and doesn't show" box, search, and a sorted chart of every tested player (k selectable, hover for details, click to open).
+- **Search:** an accessible combobox (arrow keys, Enter, Escape) that ignores accents and punctuation ("doncic" → Dončić, "dangelo" → D'Angelo). Matches are ranked by name start, then tested players, then attempts.
+- **Accessibility:**
+  - every chart has an aria-label description and a "Show as a table" alternative;
+  - verdicts are text plus colour, never colour alone;
+  - focus moves to the heading on navigation;
+  - skip link;
+  - works at 390 px width with no sideways scrolling.
+- **Colours:** the same palette as the matplotlib figures, defined once as CSS variables, with separate dark-mode values. Charts read the variables when drawn and redraw on resize or theme change.
+- **Tests (`npm test`, Vitest):** normalisation and search; every one of the 582 players is findable by full name and by last name; number formatting; p-values never shown below what the shuffles can resolve; no player summary ever says "no hot hand"; every tested player gets a power sentence.
+- **Checked visually** with headless Chrome: desktop, 390 px phone width (in an iframe, because headless Chrome's window can't go below 500 px), dark mode, an untested player, the shot log.

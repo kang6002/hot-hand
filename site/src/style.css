@@ -1,0 +1,406 @@
+/* Colour tokens: light by default, dark from the same palette (not an automatic inversion).
+   Charts read these at render time (src/charts.ts). */
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6f6d68;        /* text on light surfaces: darker than the chart-axis grey for contrast */
+  --axis: #898781;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --after-makes: #2a78d6;  /* categorical slot 1 */
+  --after-misses: #eb6834; /* categorical slot 2 */
+  --hot: #e34948;          /* diverging: hot */
+  --cold: #2a78d6;         /* diverging: cold */
+  --neutral: #898781;      /* no detectable effect */
+  --null-fill: #e1e0d9;
+  --shot-make: #0b0b0b;
+  --shot-miss: #d6d4cc;
+  --accent: #2a78d6;
+  --focus: #2a78d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #a3a29b;
+    --axis: #898781;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+    --after-makes: #3987e5;
+    --after-misses: #d95926;
+    --hot: #e66767;
+    --cold: #3987e5;
+    --neutral: #898781;
+    --null-fill: #383835;
+    --shot-make: #f0efec;
+    --shot-miss: #3a3a37;
+    --accent: #6da7ec;
+    --focus: #6da7ec;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #a3a29b;
+  --axis: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+  --after-makes: #3987e5;
+  --after-misses: #d95926;
+  --hot: #e66767;
+  --cold: #3987e5;
+  --neutral: #898781;
+  --null-fill: #383835;
+  --shot-make: #f0efec;
+  --shot-miss: #3a3a37;
+  --accent: #6da7ec;
+  --focus: #6da7ec;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 16px;
+  top: 8px;
+  background: var(--surface);
+  padding: 4px 8px;
+  z-index: 10;
+}
+
+.site-header,
+#app,
+.site-footer {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.site-header {
+  padding-top: 16px;
+  padding-bottom: 8px;
+}
+.brand {
+  color: var(--ink);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+#app {
+  padding-bottom: 32px;
+  outline: none;
+}
+
+.site-footer {
+  color: var(--muted);
+  font-size: 13px;
+  padding-bottom: 32px;
+  border-top: 1px solid var(--border);
+}
+
+h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin: 24px 0 8px;
+}
+h1:focus {
+  outline: none;
+}
+h2 {
+  font-size: 1.25rem;
+  margin: 32px 0 8px;
+}
+h3 {
+  font-size: 1rem;
+  margin: 16px 0 4px;
+}
+
+.lede {
+  font-size: 1.125rem;
+  color: var(--ink-2);
+  max-width: 65ch;
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 14px;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+
+/* Stat tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+.tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.tile .label {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.tile .value {
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.2;
+  margin: 4px 0;
+}
+.tile .sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Verdict badge: always text + colour, never colour alone */
+.verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.verdict::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neutral);
+}
+.verdict.hot::before {
+  background: var(--hot);
+}
+.verdict.cold::before {
+  background: var(--cold);
+}
+
+/* Search (ARIA combobox) */
+.search {
+  position: relative;
+  max-width: 480px;
+  margin: 16px 0 8px;
+}
+.search label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.search input {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--baseline);
+  background: var(--surface);
+  color: var(--ink);
+}
+.search ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+.search ul[hidden] {
+  display: none;
+}
+.search li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.search li[aria-selected="true"],
+.search li:hover {
+  background: var(--grid);
+}
+.search li .meta {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Segmented control (choose k) */
+.segmented {
+  display: inline-flex;
+  border: 1px solid var(--baseline);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.segmented button {
+  font: inherit;
+  font-size: 14px;
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-2);
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.segmented button + button {
+  border-left: 1px solid var(--baseline);
+}
+.segmented button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+/* Charts */
+figure {
+  margin: 16px 0;
+}
+figcaption {
+  color: var(--ink-2);
+  font-size: 14px;
+  margin-top: 4px;
+}
+.chart {
+  width: 100%;
+  overflow: hidden;
+}
+.chart svg {
+  max-width: 100%;
+  height: auto;
+}
+.small-multiples {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--ink-2);
+  margin: 4px 0;
+}
+.legend .key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.legend .key.line {
+  width: 16px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px solid var(--ink);
+}
+.legend .key.dash {
+  width: 16px;
+  height: 0;
+  border-radius: 0;
+  border-top: 2px dashed var(--ink-2);
+}
+
+/* Tables (also the text alternative for every chart) */
+details {
+  margin: 8px 0;
+}
+summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 8px 0;
+  font-variant-numeric: tabular-nums;
+}
+th,
+td {
+  text-align: right;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+th {
+  color: var(--ink-2);
+  font-weight: 600;
+}
+
+.callout {
+  border-left: 3px solid var(--baseline);
+  padding: 4px 12px;
+  color: var(--ink-2);
+  margin: 16px 0;
+}
+.callout ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.game-log .chart {
+  overflow-x: auto;
+}
