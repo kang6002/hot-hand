@@ -16,3 +16,10 @@ def test_february_end_handles_leap_years():
     assert feb["2020-02"] == "02/29/2020"
     feb = {label: last for label, _, last in month_ranges("2020-21")}
     assert feb["2021-02"] == "02/28/2021"
+
+
+def test_all_seasons():
+    from download import all_seasons
+    seasons = all_seasons()
+    assert seasons[0] == "1996-97" and seasons[-1] == "2025-26" and len(seasons) == 30
+    assert "1999-00" in seasons  # century rollover

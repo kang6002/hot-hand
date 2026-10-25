@@ -20,7 +20,7 @@ from simulate import simulate_shooter
 from stats import analyse_player
 
 KS = (1, 2, 3)
-FGA = (300, 600, 1000, 1500, 3000, 6000)  # one season ... a career
+FGA = (300, 600, 1000, 1500, 3000, 6000, 12000, 24000)  # one season ... a long career
 BOOSTS = (0.0, 0.02, 0.05, 0.10)          # rise in make probability after k makes
 ALPHAS = (0.05, 0.001)                    # per-player level; 0.001 is roughly what BH needs
 SHOTS_PER_GAME = 15
@@ -51,12 +51,16 @@ def run_cell(args):
 
 def main():
     cells = list(product(KS, FGA, range(len(BOOSTS))))
-    print(f"{len(cells)} scenarios x {N_SIMS} simulated players ...")
+    # Results are seeded per scenario, so scenarios already in the CSV don't need rerunning
+    old = pd.read_csv(OUT) if OUT.exists() else pd.DataFrame(columns=["k", "fga", "boost"])
+    done = {(int(r.k), int(r.fga), float(r.boost)) for r in old.itertuples()}
+    cells = [c for c in cells if (c[0], c[1], BOOSTS[c[2]]) not in done]
+    print(f"{len(cells)} new scenarios x {N_SIMS} simulated players ({len(done)} already done) ...")
     start = time.time()
     with ProcessPoolExecutor() as pool:  # one scenario per CPU core at a time
         rows = list(pool.map(run_cell, cells))
     print(f"done in {time.time() - start:.0f} s")
-    table = pd.DataFrame(rows)
+    table = pd.concat([old, pd.DataFrame(rows)], ignore_index=True).sort_values(["k", "fga", "boost"])
     OUT.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(OUT, index=False)
     print(table.to_string(index=False, float_format=lambda x: f"{x:.3f}"))

@@ -1,7 +1,10 @@
-// Entry point: hash routing (#/ and #/player/<id>), like a tiny Shiny router.
+// Entry point: hash routing (#/, #/league, #/method, #/about, #/player/<id>), like a tiny Shiny router.
 
 import "./style.css";
+import { renderAbout } from "./pages/about";
 import { renderHome } from "./pages/home";
+import { renderLeague } from "./pages/league";
+import { renderMethod } from "./pages/method";
 import { renderPlayer } from "./pages/player";
 
 const app = document.querySelector<HTMLElement>("#app")!;
@@ -12,8 +15,17 @@ const go = (id: number) => {
 
 async function route(): Promise<void> {
   const match = location.hash.match(/^#\/player\/(\d+)/);
+  const page = match ? "player" : (location.hash.match(/^#\/(league|method|about)/)?.[1] ?? "home");
+  // Mark the current page in the navigation
+  document.querySelectorAll<HTMLAnchorElement>("nav a").forEach((a) => {
+    if (a.dataset.route === page) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  });
   try {
     if (match) await renderPlayer(app, Number(match[1]), go);
+    else if (page === "league") await renderLeague(app, go);
+    else if (page === "method") await renderMethod(app);
+    else if (page === "about") renderAbout(app);
     else await renderHome(app, go);
   } catch (err) {
     console.error(err);

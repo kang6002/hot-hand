@@ -56,23 +56,53 @@ export function verdictBadge(v: Verdict): string {
 const streakName = (k: number) => (k === 1 ? "a make" : `${k} makes in a row`);
 const missName = (k: number) => (k === 1 ? "a miss" : `${k} misses in a row`);
 
-/** Plain-English summary of a player's headline (k = 3) result. */
+/** "in 2025-26" or "from 2003-04 to 2025-26" */
+export function seasonSpan(player: Player): string {
+  return player.first_season === player.last_season
+    ? `in ${player.first_season}`
+    : `from ${player.first_season} to ${player.last_season}`;
+}
+
+/** Plain-English summary of a player's headline (k = 3) career result. */
 export function playerSummary(player: Player, nTested: number, headlineK = 3): string {
   const first = player.name.split(" ")[0];
+  const span = seasonSpan(player);
   if (!player.tested) {
-    return `${player.name} took ${int(player.fga)} shots in ${player.season}, fewer than the ${player.min_fga} we need for a reliable test. The raw shooting numbers below are shown for interest only; they are not corrected for bias and can't tell a hot hand from luck.`;
+    return `${player.name} took ${int(player.fga)} regular-season shots ${span}, fewer than the ${player.min_fga} we need for a reliable test. The raw shooting numbers below are shown for interest only; they are not corrected for bias and can't tell a hot hand from luck.`;
   }
-  const r = player.ks.find((x) => x.k === headlineK)!;
-  const t = r.test!;
+  const t = player.ks.find((x) => x.k === headlineK)!.test!;
   const direction = t.effect >= 0 ? "more" : "less";
   const size = `${(100 * Math.abs(t.effect)).toFixed(1)} percentage points`;
-  const base = `After ${streakName(headlineK)}, ${first}'s next shot went in ${size} ${direction} often than after ${missName(headlineK)}, once the statistical bias is removed (95% CI ${ppInterval(t.ci_low, t.ci_high)}).`;
+  const base = `Across ${int(player.fga)} regular-season shots ${span}, ${first}'s shot right after ${streakName(headlineK)} went in ${size} ${direction} often than after ${missName(headlineK)}, once the statistical bias is removed (95% CI ${ppInterval(t.ci_low, t.ci_high)}).`;
   const v = verdict(t);
   if (v === "none") {
-    return `${base} That is within the range luck alone produces once we account for testing ${nTested} players: no detectable effect.`;
+    return `${base} That is within the range luck alone produces once we account for testing ${int(nTested)} players: no detectable effect.`;
   }
   const what = v === "hot" ? "a detectable hot hand" : "a detectable cold hand (shooting worse after makes)";
-  return `${base} This is ${what}: unlikely to be luck, even after accounting for testing ${nTested} players (q = ${t.q_value.toFixed(3)}).`;
+  const caveat =
+    v === "cold"
+      ? " The most likely reason is shot selection: after making shots, players often take harder shots and defences tighten. We don't control for shot difficulty yet, so this doesn't show that the player's skill drops."
+      : " We don't control for shot difficulty yet, so part of this could reflect the kind of shots taken after makes.";
+  return `${base} This is ${what}: unlikely to be luck, even after accounting for testing ${int(nTested)} players (q ${qText(t.q_value).startsWith("<") ? "" : "= "}${qText(t.q_value)}).${caveat}`;
+}
+
+/** Sentence for shorter streaks (k other than the headline) that are BH discoveries. */
+export function otherStreaksNote(player: Player, headlineK = 3): string | null {
+  const flagged = player.ks.filter((r) => r.k !== headlineK && r.test?.discovery);
+  if (!flagged.length) return null;
+  const parts = flagged.map((r) => {
+    const t = r.test!;
+    return `after ${streakName(r.k)} the next shot went in ${(100 * Math.abs(t.effect)).toFixed(1)} percentage points ${t.effect > 0 ? "more" : "less"} often (95% CI ${ppInterval(t.ci_low, t.ci_high)}, q ${qText(t.q_value).startsWith("<") ? "" : "= "}${qText(t.q_value)})`;
+  });
+  const anyCold = flagged.some((r) => r.test!.effect < 0);
+  return `Shorter streaks tell a different story: ${parts.join("; ")}. ${flagged.length > 1 ? "These are" : "This is"} unlikely to be luck.${anyCold ? " The most likely reason is shot selection: after making shots, players often take harder shots and defences tighten. We don't control for shot difficulty yet, so this doesn't show that the player's skill drops." : ""}`;
+}
+
+/** Note for careers that began before shot-level data exists. */
+export function partialNote(player: Player): string | null {
+  return player.partial_career
+    ? `${player.name}'s career began before ${player.data_start}, when shot-level data starts, so earlier seasons are not included.`
+    : null;
 }
 
 /** "How big a hot hand could we have found?" from the simulated power curve. */
@@ -83,8 +113,10 @@ export function powerSentence(player: Player, league: League, k = 3, boost = 0.1
   const nearest = rows.reduce((a, b) =>
     Math.abs(Math.log(b.fga / player.fga)) < Math.abs(Math.log(a.fga / player.fga)) ? b : a,
   );
+  const largest = Math.max(...rows.map((r) => r.fga));
+  const shots = player.fga > 1.2 * largest ? `${int(largest)} shots (the most we simulated; ${player.name.split(" ")[0]} has more)` : `about ${int(nearest.fga)} shots`;
   const share = (x: number) => (x >= 0.995 ? "almost always" : x < 0.01 ? "almost never" : `${Math.round(100 * x)}% of the time`);
-  return `How sensitive is this? In simulations of players with about ${int(nearest.fga)} shots, a hot hand that adds ${Math.round(100 * boost)} percentage points after ${streakName(k)} is detected ${share(nearest.power_05)} at the usual 5% level, and ${share(nearest.power_001)} at the stricter level needed when testing hundreds of players. Published estimates of real hot-hand effects are mostly smaller than that.`;
+  return `How sensitive is this? In simulations of players with ${shots}, a hot hand that adds ${Math.round(100 * boost)} percentage points after ${streakName(k)} is detected ${share(nearest.power_05)} at the usual 5% level, and ${share(nearest.power_001)} at the stricter level needed when testing ${int(league.n_tested)} players. Published estimates of real hot-hand effects are mostly smaller than that.`;
 }
 
 /** Escape text for use inside HTML. */
@@ -96,4 +128,9 @@ export function esc(s: string): string {
 export function pText(p: number, nShuffles?: number): string {
   const s = pValue(p, nShuffles);
   return s.startsWith("<") ? `p ${s}` : `p = ${s}`;
+}
+
+/** q-value: "0.63", "0.007", "< 0.001" */
+export function qText(q: number): string {
+  return q < 0.001 ? "< 0.001" : q < 0.01 ? q.toFixed(3) : q.toFixed(2);
 }

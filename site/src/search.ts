@@ -19,14 +19,25 @@ export function normalize(s: string): string {
     .trim();
 }
 
+// Normalised name and its words, computed once per player (search runs on every keystroke)
+const normalized = new WeakMap<IndexEntry, { name: string; tokens: string[] }>();
+function normalizedName(p: IndexEntry) {
+  let n = normalized.get(p);
+  if (!n) {
+    const name = normalize(p.name);
+    n = { name, tokens: name.split(" ") };
+    normalized.set(p, n);
+  }
+  return n;
+}
+
 /** Players whose name words start with every query word; best matches first. */
 export function searchPlayers(players: IndexEntry[], query: string, limit = 8): IndexEntry[] {
   const words = normalize(query).split(" ").filter(Boolean);
   if (!words.length) return [];
   const scored: { p: IndexEntry; score: number }[] = [];
   for (const p of players) {
-    const name = normalize(p.name);
-    const tokens = name.split(" ");
+    const { name, tokens } = normalizedName(p);
     if (!words.every((w) => tokens.some((t) => t.startsWith(w)))) continue;
     // Prefer names that start with the query, then tested players, then more shots
     const score = (name.startsWith(words.join(" ")) ? 2e6 : 0) + (p.tested ? 1e6 : 0) + p.fga;

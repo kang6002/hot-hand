@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import type { IndexEntry, League, Player } from "./data";
-import { pp, pText, pValue, playerSummary, powerSentence, verdict } from "./format";
+import { partialNote, pp, pText, pValue, playerSummary, powerSentence, verdict } from "./format";
 import { normalize, searchPlayers } from "./search";
 import indexJson from "../public/data/index.json";
 import leagueJson from "../public/data/league.json";
@@ -32,8 +32,9 @@ describe("search", () => {
   it("finds every player by their full name and by their last name", () => {
     for (const p of players) {
       expect(searchPlayers(players, p.name, 50).map((r) => r.id)).toContain(p.id);
+      // Last names can be shared by many players (54 Williamses), so allow all matches
       const last = p.name.split(" ").at(-1)!;
-      expect(searchPlayers(players, last, 50).map((r) => r.id)).toContain(p.id);
+      expect(searchPlayers(players, last, players.length).map((r) => r.id)).toContain(p.id);
     }
   });
 });
@@ -71,7 +72,23 @@ describe("wording on every player page", () => {
 
   it("gives every tested player a power sentence", () => {
     for (const p of all.filter((x) => x.tested)) {
-      expect(powerSentence(p, league)).toMatch(/simulations of players with about [\d,]+ shots/);
+      expect(powerSentence(p, league)).toMatch(/simulations of players with (about )?[\d,]+ shots/);
+    }
+  });
+
+  it("flags careers that began before shot data, and only those", () => {
+    const byName = (n: string) => all.find((p) => p.name === n)!;
+    expect(partialNote(byName("Michael Jordan"))).toContain("began before 1996-97");
+    expect(partialNote(byName("Kevin Garnett"))).toContain("began before 1996-97");
+    expect(partialNote(byName("Kobe Bryant"))).toBeNull();
+    expect(partialNote(byName("LeBron James"))).toBeNull();
+  });
+
+  it("shows per-season results only as estimates (no significance fields)", () => {
+    for (const p of all) {
+      for (const s of p.seasons) {
+        for (const k of s.ks ?? []) expect(Object.keys(k).sort()).toEqual(["ci_high", "ci_low", "effect", "k"]);
+      }
     }
   });
 });

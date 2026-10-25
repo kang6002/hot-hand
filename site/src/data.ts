@@ -34,16 +34,31 @@ export interface KResult {
   test?: Test;
 }
 
-export interface Game {
-  game_id: string;
-  date: string;
-  shots: string; // "1" = make, "0" = miss, in shot order
+export interface SeasonK {
+  k: number;
+  effect: number;
+  ci_low: number;
+  ci_high: number;
+}
+
+/** One season of a player's career: estimate + CI only (no significance labels). */
+export interface SeasonEntry {
+  season: string;
+  fga: number;
+  games: number;
+  fg_pct: number;
+  tested: boolean;
+  ks?: SeasonK[];
 }
 
 export interface Player {
   id: number;
   name: string;
-  season: string;
+  first_season: string;
+  last_season: string;
+  n_seasons: number;
+  partial_career: boolean; // career began before shot-level data (data_start)
+  data_start: string;
   fga: number;
   games: number;
   fg: { pct: number; ci_low: number; ci_high: number };
@@ -51,14 +66,19 @@ export interface Player {
   min_fga: number;
   fdr_q: number;
   ks: KResult[];
-  game_log: Game[];
+  seasons: SeasonEntry[];
 }
+
+/** Every shot: per season, per game (d = "MM-DD", s = "1" make / "0" miss in order). */
+export type ShotLog = { season: string; games: { d: string; s: string }[] }[];
 
 export interface IndexEntry {
   id: number;
   name: string;
   fga: number;
   tested: boolean;
+  first: string;
+  last: string;
 }
 
 export interface LeagueK {
@@ -70,6 +90,16 @@ export interface LeagueK {
   p_value: number;
   discoveries_hot: number;
   discoveries_cold: number;
+}
+
+export interface LeagueSeasonK {
+  season: string;
+  k: number;
+  n_players: number;
+  effect: number;
+  ci_low: number;
+  ci_high: number;
+  p_value: number;
 }
 
 export interface LeaguePlayer {
@@ -92,17 +122,27 @@ export interface PowerRow {
   power_001: number;
 }
 
+export interface Estimate {
+  k: number;
+  effect: number;
+  ci_low: number;
+  ci_high: number;
+  p_value: number;
+}
+
 export interface League {
-  season: string;
+  first_season: string;
+  last_season: string;
   min_fga: number;
   fdr_q: number;
   n_players: number;
   n_tested: number;
+  n_shots: number;
   ks: LeagueK[];
-  players: LeaguePlayer[];
+  seasons: LeagueSeasonK[];
   power: PowerRow[];
-  /** League result without putbacks and tip-ins (sensitivity check); empty if not run */
-  no_putbacks: { k: number; effect: number; ci_low: number; ci_high: number; p_value: number }[];
+  /** Putback check for one season: main result vs without putbacks and tip-ins (empty lists if not run) */
+  putback_check: { season: string; main: Estimate[]; without: Estimate[] };
 }
 
 const cache = new Map<string, Promise<unknown>>();
@@ -122,6 +162,8 @@ function load<T>(path: string): Promise<T> {
   return cache.get(path) as Promise<T>;
 }
 
-export const loadIndex = () => load<{ season: string; players: IndexEntry[] }>("index.json");
+export const loadIndex = () => load<{ players: IndexEntry[] }>("index.json");
 export const loadLeague = () => load<League>("league.json");
+export const loadLeaguePlayers = () => load<LeaguePlayer[]>("league_players.json");
 export const loadPlayer = (id: number) => load<Player>(`players/${id}.json`);
+export const loadShots = (id: number) => load<ShotLog>(`shots/${id}.json`);

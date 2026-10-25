@@ -2,8 +2,11 @@
 // style.css, read when a chart is drawn; charts redraw on resize and theme change.
 
 import * as Plot from "@observablehq/plot";
-import type { KResult, LeaguePlayer, NullHist, Player } from "./data";
-import { pct, pctInterval, pp, ppInterval, verdict } from "./format";
+import type { KResult, LeaguePlayer, LeagueSeasonK, NullHist, Player, ShotLog } from "./data";
+import { pct, pctInterval, pp, ppInterval, qText, verdict } from "./format";
+
+// Axis ticks in percentage points: "-4.5", "-4", "0" (one decimal only when needed)
+const ppTick = (d: number) => `${+(100 * d).toFixed(1)}`;
 
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
@@ -102,7 +105,7 @@ export function effectsChart(player: Player): Render {
       marginLeft: 48,
       style: baseStyle(),
       ariaLabel: `Bias-corrected hot-hand effect with 95% confidence interval for ${player.name}, for 1, 2 and 3 makes in a row`,
-      x: { label: "Bias-corrected effect (percentage points)", grid: true, nice: true, inset: 8, tickFormat: (d: number) => `${Math.round(100 * d)}` },
+      x: { label: "Bias-corrected effect (percentage points)", grid: true, nice: true, inset: 8, tickFormat: ppTick },
       y: { label: null, domain: rows.map((d) => d.k) },
       marks: [
         Plot.ruleX([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),
@@ -110,7 +113,7 @@ export function effectsChart(player: Player): Render {
         Plot.dot(rows, {
           y: "k", x: "effect", fill: (d) => verdictColor(d.v), r: 6, stroke: css("--surface"), strokeWidth: 1.5,
           tip: true,
-          title: (d) => `${d.k}: effect ${pp(d.effect)}\n95% CI ${ppInterval(d.ci_low, d.ci_high)}\nq = ${d.q_value.toFixed(2)}`,
+          title: (d) => `${d.k}: effect ${pp(d.effect)}\n95% CI ${ppInterval(d.ci_low, d.ci_high)}\nq ${qText(d.q_value)}`,
         }),
       ],
     });
@@ -131,7 +134,7 @@ export function nullChart(hist: NullHist, dRaw: number, bias: number, k: number)
       marginLeft: 12,
       style: baseStyle(),
       ariaLabel: `Distribution of the difference after ${k} makes minus after ${k} misses in ${hist.n} within-game shuffles, with the real value ${pp(dRaw)} and the shuffle mean ${pp(bias)}`,
-      x: { label: "after makes − after misses (pp)", tickFormat: (d: number) => `${Math.round(100 * d)}`, nice: true },
+      x: { label: "after makes − after misses (pp)", tickFormat: ppTick, nice: true },
       y: { axis: null },
       marks: [
         Plot.rectY(bins, { x1: "x1", x2: "x2", y: "count", fill: css("--null-fill"), insetLeft: 0.5, insetRight: 0.5 }),
@@ -142,34 +145,40 @@ export function nullChart(hist: NullHist, dRaw: number, bias: number, k: number)
     });
 }
 
-// --- Player: every shot of the season (rows = games, cells = shots) ---
+// --- Player: every shot of one season (rows = games, cells = shots) ---
 
-export function gameLogChart(player: Player): Render {
-  const cells = player.game_log.flatMap((g, row) => {
+export function gameLogChart(name: string, season: ShotLog[number]): Render {
+  const startYear = Number(season.season.slice(0, 4));
+  // "MM-DD" -> date; months before August belong to the second calendar year of the season
+  const dateOf = (d: string) => {
+    const [m, day] = d.split("-").map(Number);
+    return new Date(m >= 8 ? startYear : startYear + 1, m - 1, day, 12);
+  };
+  const games = season.games;
+  const cells = games.flatMap((g, row) => {
     let run = 0;
-    return [...g.shots].map((s, i) => {
-      const cell = { game: row, date: g.date, shot: i + 1, made: s === "1", run };
+    return [...g.s].map((s, i) => {
+      const cell = { game: row, shot: i + 1, made: s === "1", run };
       run = s === "1" ? Math.max(run, 0) + 1 : Math.min(run, 0) - 1;
       return cell;
     });
   });
-  const maxShots = Math.max(...player.game_log.map((g) => g.shots.length));
+  const maxShots = Math.max(...games.map((g) => g.s.length));
   const size = 11;
-  const dates = player.game_log.map((g) => g.date);
-  const fmtDate = (i: number) =>
-    new Date(dates[i] + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const fmtDate = (i: number) => dateOf(games[i].d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const streak = (run: number) =>
     run > 0 ? `after ${run} make${run > 1 ? "s" : ""} in a row` : run < 0 ? `after ${-run} miss${run < -1 ? "es" : ""} in a row` : "first shot of the game";
+  const range = (n: number) => Array.from({ length: n }, (_, i) => i);
   return () =>
     Plot.plot({
       width: 64 + maxShots * size + 16,
-      height: 24 + player.game_log.length * size + 32,
+      height: 24 + games.length * size + 32,
       marginLeft: 64,
       marginTop: 24,
       style: baseStyle(),
-      ariaLabel: `Every field-goal attempt by ${player.name} in ${player.season}: ${player.game_log.length} games, makes and misses in order`,
-      x: { label: null, axis: "top", domain: Array.from({ length: maxShots }, (_, i) => i + 1), ticks: Array.from({ length: maxShots }, (_, i) => i + 1).filter((n) => n === 1 || n % 5 === 0), padding: 0.15 },
-      y: { label: null, domain: dates.map((_, i) => i), tickFormat: fmtDate, ticks: dates.map((_, i) => i).filter((i) => i % 5 === 0), padding: 0.15 },
+      ariaLabel: `Every field-goal attempt by ${name} in ${season.season}: ${games.length} games, makes and misses in order`,
+      x: { label: null, axis: "top", domain: range(maxShots).map((i) => i + 1), ticks: range(maxShots).map((i) => i + 1).filter((n) => n === 1 || n % 5 === 0), padding: 0.15 },
+      y: { label: null, domain: range(games.length), tickFormat: fmtDate, ticks: range(games.length).filter((i) => i % 5 === 0), padding: 0.15 },
       marks: [
         Plot.cell(cells, {
           x: "shot", y: "game", rx: 2,
@@ -181,7 +190,64 @@ export function gameLogChart(player: Player): Render {
     });
 }
 
-// --- Home: every tested player's effect, sorted ---
+// --- Player: effect season by season (estimates + CI only, no significance labels) ---
+
+export function seasonChart(player: Player, k: number): Render {
+  const rows = player.seasons
+    .filter((s) => s.tested && s.ks)
+    .map((s) => ({ season: s.season, fga: s.fga, ...s.ks!.find((x) => x.k === k)! }));
+  const career = player.ks.find((x) => x.k === k)?.test;
+  return (width) =>
+    Plot.plot({
+      width,
+      height: 240,
+      marginLeft: 44,
+      marginBottom: 44,
+      style: baseStyle(),
+      ariaLabel: `${player.name}: effect after ${k} makes in a row, season by season, with 95% confidence intervals`,
+      x: { label: null, domain: rows.map((d) => d.season), tickFormat: (s: string) => s.slice(2), tickRotate: rows.length > 10 ? -45 : 0 },
+      y: { label: "Effect (pp) with 95% CI", grid: true, tickFormat: ppTick },
+      marks: [
+        Plot.ruleY([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),
+        career ? Plot.ruleY([career.effect], { stroke: css("--ink"), strokeWidth: 1.5 }) : null,
+        Plot.ruleX(rows, { x: "season", y1: "ci_low", y2: "ci_high", stroke: css("--baseline"), strokeWidth: 2 }),
+        Plot.dot(rows, {
+          x: "season", y: "effect", r: 4, fill: css("--neutral"),
+          tip: true,
+          title: (d) => `${d.season} (${d.fga.toLocaleString("en-US")} FGA)\nEffect ${pp(d.effect)}, 95% CI ${ppInterval(d.ci_low, d.ci_high)}`,
+        }),
+      ],
+    });
+}
+
+// --- League: effect season by season ---
+
+export function leagueSeasonsChart(seasons: LeagueSeasonK[], allTime: { effect: number }, k: number): Render {
+  const rows = seasons.filter((s) => s.k === k);
+  return (width) =>
+    Plot.plot({
+      width,
+      height: 280,
+      marginLeft: 44,
+      marginBottom: 44,
+      style: baseStyle(),
+      ariaLabel: `League-wide effect after ${k} makes in a row, season by season from ${rows[0]?.season} to ${rows.at(-1)?.season}, with 95% confidence intervals`,
+      x: { label: null, domain: rows.map((d) => d.season), tickFormat: (s: string) => s.slice(2), tickRotate: -45 },
+      y: { label: "League-wide effect (pp) with 95% CI", grid: true, tickFormat: ppTick },
+      marks: [
+        Plot.ruleY([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),
+        Plot.ruleY([allTime.effect], { stroke: css("--ink"), strokeWidth: 1.5 }),
+        Plot.ruleX(rows, { x: "season", y1: "ci_low", y2: "ci_high", stroke: css("--baseline"), strokeWidth: 2 }),
+        Plot.dot(rows, {
+          x: "season", y: "effect", r: 4, fill: css("--ink-2"),
+          tip: true,
+          title: (d) => `${d.season}: ${pp(d.effect)}, 95% CI ${ppInterval(d.ci_low, d.ci_high)}\n${d.n_players} players`,
+        }),
+      ],
+    });
+}
+
+// --- League: every tested player's effect, sorted ---
 
 export function leagueChart(players: LeaguePlayer[], leagueEffect: { effect: number; ci_low: number; ci_high: number }, k: number, onSelect: (id: number) => void): Render {
   const rows = [...players].sort((a, b) => a.effect - b.effect).map((d, i) => ({ ...d, rank: i + 1 }));
@@ -192,8 +258,8 @@ export function leagueChart(players: LeaguePlayer[], leagueEffect: { effect: num
       marginLeft: 44,
       style: baseStyle(),
       ariaLabel: `Bias-corrected effect for ${rows.length} players after ${k} makes in a row, sorted from lowest to highest, with the league-wide estimate ${pp(leagueEffect.effect)}`,
-      x: { label: `${rows.length} players, sorted by effect`, ticks: [] },
-      y: { label: "Effect (pp) with 95% CI", grid: true, tickFormat: (d: number) => `${Math.round(100 * d)}` },
+      x: { label: `${rows.length.toLocaleString("en-US")} players, sorted by effect`, ticks: [] },
+      y: { label: "Effect (pp) with 95% CI", grid: true, tickFormat: ppTick },
       marks: [
         Plot.rectY([leagueEffect], { x1: 0, x2: rows.length + 1, y1: "ci_low", y2: "ci_high", fill: css("--ink"), fillOpacity: 0.08 }),
         Plot.ruleY([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),

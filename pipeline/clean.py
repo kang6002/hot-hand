@@ -6,8 +6,8 @@ events were typed in, which is wrong for shots logged late (DECISIONS.md;
 pipeline/check_order.py). EVENT_ID_OUT_OF_ORDER marks those shots: the ones
 GAME_EVENT_ID order would have put too late.
 
-Run from the project root (after download.py):  .venv/bin/python pipeline/clean.py 2025-26
-Output: data/interim/shots_<season>.parquet
+Run from the project root (after download.py):  .venv/bin/python pipeline/clean.py 2025-26   (or: all)
+Output: data/interim/shots_<season>.parquet, and one row per season in data/processed/data_quality.csv
 """
 
 import argparse
@@ -16,9 +16,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from download import RAW_DIR, shot_rows
+from download import RAW_DIR, all_seasons, shot_rows
 
 INTERIM_DIR = Path("data/interim")
+QUALITY_CSV = Path("data/processed/data_quality.csv")
 
 KEEP = [
     "GAME_ID", "GAME_DATE", "GAME_EVENT_ID", "PLAYER_ID", "PLAYER_NAME", "TEAM_ID",
@@ -79,7 +80,7 @@ def clean(raw, season):
 
 
 def summarise(shots):
-    """Print what a reader should check about the cleaned season."""
+    """Print and return what a reader should check about the cleaned season."""
     n_flag = int(shots["EVENT_ID_OUT_OF_ORDER"].sum())
     player_games = shots.groupby(["PLAYER_ID", "GAME_ID"])
     flagged_games = int(player_games["EVENT_ID_OUT_OF_ORDER"].any().sum())
@@ -93,20 +94,38 @@ def summarise(shots):
     print(f"Shots GAME_EVENT_ID would misplace (fixed by clock order): {n_flag} "
           f"in {flagged_games} player-games ({n_flag / len(shots):.3%} of shots)")
     print(f"Shots sharing a second with another shot by the same player: {int(same_second.sum())}")
+    return {
+        "shots": len(shots), "players": shots["PLAYER_ID"].nunique(), "games": shots["GAME_ID"].nunique(),
+        "player_games": len(player_games), "fg_pct": round(shots["SHOT_MADE_FLAG"].mean(), 4),
+        "multi_team_player_games": int((teams_per_player_game > 1).sum()),
+        "event_id_out_of_order": n_flag, "event_id_out_of_order_pct": round(n_flag / len(shots), 5),
+        "same_second_shots": int(same_second.sum()),
+    }
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("season", nargs="?", default="2025-26", help='e.g. "2025-26"')
-    season = parser.parse_args().season
+    parser.add_argument("seasons", nargs="*", default=["2025-26"], help='e.g. "2025-26", several, or "all"')
+    seasons = parser.parse_args().seasons
+    if seasons == ["all"]:
+        seasons = all_seasons()
 
-    shots = clean(load_raw(season), season)
-    summarise(shots)
-
+    quality = pd.read_csv(QUALITY_CSV) if QUALITY_CSV.exists() else pd.DataFrame()
     INTERIM_DIR.mkdir(parents=True, exist_ok=True)
-    out = INTERIM_DIR / f"shots_{season}.parquet"
-    shots.to_parquet(out, index=False)
-    print(f"\nSaved {out}")
+    for season in seasons:
+        print(f"\n{season}")
+        shots = clean(load_raw(season), season)
+        row = {"season": season} | summarise(shots)
+        out = INTERIM_DIR / f"shots_{season}.parquet"
+        shots.to_parquet(out, index=False)
+        print(f"Saved {out}")
+        if not quality.empty:
+            quality = quality[quality["season"] != season]
+        quality = pd.concat([quality, pd.DataFrame([row])], ignore_index=True)
+
+    QUALITY_CSV.parent.mkdir(parents=True, exist_ok=True)
+    quality.sort_values("season").to_csv(QUALITY_CSV, index=False)
+    print(f"\nSaved {QUALITY_CSV}")
 
 
 if __name__ == "__main__":

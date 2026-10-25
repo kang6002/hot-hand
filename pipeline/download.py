@@ -5,6 +5,7 @@ ask for one calendar month at a time (see DECISIONS.md). Each month's raw JSON
 is cached in data/raw/shotchart/<season>/<YYYY-MM>.json and never re-downloaded.
 
 Run from the project root:  .venv/bin/python pipeline/download.py 2025-26
+                            .venv/bin/python pipeline/download.py all   (1996-97 to 2025-26)
 """
 
 import argparse
@@ -20,6 +21,15 @@ RAW_DIR = Path("data/raw/shotchart")
 ROW_CAP = 102_400      # server limit found by pipeline/probe.py
 PAUSE_SECONDS = 3      # wait between requests, to be polite to stats.nba.com
 MAX_ATTEMPTS = 5       # retries wait 5, 10, 20, 40 s (exponential backoff)
+
+
+FIRST_SEASON = 1996   # shot-chart data starts in 1996-97
+LAST_SEASON = 2025
+
+
+def all_seasons():
+    """["1996-97", ..., "2025-26"]"""
+    return [f"{y}-{(y + 1) % 100:02d}" for y in range(FIRST_SEASON, LAST_SEASON + 1)]
 
 
 class TruncatedResponse(Exception):
@@ -124,10 +134,13 @@ def summarise(season, responses):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("season", nargs="?", default="2025-26", help='e.g. "2025-26"')
-    season = parser.parse_args().season
-    print(f"Season {season}")
-    summarise(season, download_season(season))
+    parser.add_argument("seasons", nargs="*", default=["2025-26"], help='e.g. "2025-26", several, or "all"')
+    seasons = parser.parse_args().seasons
+    if seasons == ["all"]:
+        seasons = all_seasons()
+    for season in seasons:
+        print(f"Season {season}")
+        summarise(season, download_season(season))
 
 
 if __name__ == "__main__":
