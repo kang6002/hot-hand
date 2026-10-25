@@ -135,7 +135,7 @@ export async function renderPlayer(app: HTMLElement, id: number, go: (id: number
       <strong>Limits of this analysis.</strong>
       <ul>
         <li>Shot difficulty isn't controlled: after makes, players may take harder shots, and defences may adjust.</li>
-        <li>Putbacks and tip-ins mostly follow misses and go in often, which lowers the effect.</li>
+        <li>Putbacks and tip-ins mostly follow misses and go in often, which lowers the effect a little (league-wide, removing them changes it by less than half a percentage point).</li>
         <li>Missed shots on shooting fouls aren't recorded as field-goal attempts.</li>
         <li>One season gives limited power: "no detectable effect" is not proof that there is no hot hand.</li>
       </ul>

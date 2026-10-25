@@ -162,3 +162,19 @@ Each entry: what we chose, why, and the alternatives considered.
 - **Colours:** the same palette as the matplotlib figures, defined once as CSS variables, with separate dark-mode values. Charts read the variables when drawn and redraw on resize or theme change.
 - **Tests (`npm test`, Vitest):** normalisation and search; every one of the 582 players is findable by full name and by last name; number formatting; p-values never shown below what the shuffles can resolve; no player summary ever says "no hot hand"; every tested player gets a power sentence.
 - **Checked visually** with headless Chrome: desktop, 390 px phone width (in an iframe, because headless Chrome's window can't go below 500 px), dark mode, an untested player, the shot log.
+
+## 2026-10-25 — Putback/tip-in sensitivity check (moved forward from Milestone 4 at the user's request)
+- **Question:** putbacks and tip-ins mostly follow misses and go in often. Do they explain the negative league-wide effect?
+- **Method** (`pipeline/sensitivity_putbacks.py`):
+  - Remove the four putback/tip-in shot types (Tip Layup, Putback Layup, Tip Dunk, Putback Dunk) from every shot sequence: 9,915 shots, 4.5% of all shots, FG% 59.7%. They follow the player's own miss 50–58% of the time, against 46% for all shots.
+  - Rerun the whole analysis (shuffles, bootstrap, BH, league estimate) on the **same 284 players** as the main run, for a like-for-like comparison; 12 of them now have fewer than 300 FGA.
+  - To reuse the code, `analyse.py` was split into `analyse_season()` plus `main()`. Rerunning the main analysis afterwards reproduced the committed CSVs byte for byte.
+- **Result** (league-wide effect, main → without putbacks):
+  - k = 1: −1.03 → −0.95 pp;
+  - k = 2: −1.32 → −1.21 pp;
+  - k = 3: −2.03 → −1.58 pp (95% CI [−2.47, −0.59], p = 0.002).
+
+  Putbacks explain 8%, 9% and 22% of the effect. The effect stays negative and clearly non-zero for every k, and there are still 0 BH discoveries. Player-level effects barely move for k = 1–2 (correlation 0.94 and 0.91 with the main run); for k = 3 the correlation is 0.62, because removing shots changes many short streaks.
+- **Meaning:** putbacks are a minor part of the negative effect. The most likely remaining explanation is shot selection and defence after makes (harder shots), which needs the shot-difficulty control (Milestone 4).
+- **Site:** `league.json` now carries the no-putback league result. The home page states it ("without them, the effect after 3 makes in a row is −1.6 pp … instead of −2.0 pp"), and the player-page limitation says putbacks change the league effect by less than half a percentage point.
+- **Alternatives:** keep putbacks in the history but not as predicted shots (breaks the shuffle logic, because putback outcomes would be shuffled into other positions); model shot type in a regression (that's the shot-difficulty work in Milestone 4).

@@ -66,24 +66,25 @@ def league_estimate(rows, null_draws, null_means, boot_draws, weights):
     return effect, ci_low, ci_high, p_value
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("season", nargs="?", default="2025-26")
-    season = parser.parse_args().season
+def analyse_season(shots, tested_ids=None):
+    """Raw stats for every player; test, BH-FDR and league estimate for tested players.
 
-    shots = pd.read_parquet(INTERIM_DIR / f"shots_{season}.parquet")
-    # clean.py sorted shots by player, game and game clock; keep that order
+    shots must be in clean.py's order (player, game, game clock). tested_ids: which
+    players to test; default every player with >= MIN_FGA attempts.
+    Returns (players, streaks, league, draws).
+    """
     players, streaks = [], []
     draws = {k: {"null": [], "boot": [], "null_mean": [], "fga": []} for k in KS}
     groups = list(shots.groupby("PLAYER_ID", sort=False))
-    n_tested = sum(len(g) >= MIN_FGA for _, g in groups)
-    print(f"{season}: {len(groups)} players, {n_tested} with >= {MIN_FGA} FGA")
+    is_tested = (lambda pid, g: len(g) >= MIN_FGA) if tested_ids is None else (lambda pid, g: pid in tested_ids)
+    n_tested = sum(is_tested(pid, g) for pid, g in groups)
+    print(f"{len(groups)} players, {n_tested} tested")
 
     start = time.time()
     done = 0
     for player_id, g in groups:
         made, game = g["SHOT_MADE_FLAG"].to_numpy(), g["GAME_ID"].to_numpy()
-        tested = len(g) >= MIN_FGA
+        tested = is_tested(player_id, g)
         raw = descriptive(made, game)
         players.append({
             "player_id": player_id,
@@ -147,7 +148,25 @@ def main():
             "discoveries_hot": int((reject & (rows["effect"] > 0)).sum()),
             "discoveries_cold": int((reject & (rows["effect"] < 0)).sum()),
         })
-    league = pd.DataFrame(league)
+    return players, streaks, pd.DataFrame(league), draws
+
+
+def print_league(league):
+    print("\nLeague-wide (shot-weighted mean of player effects, percentage points):")
+    for r in league.itertuples():
+        print(f"  k={r.k}: {100 * r.effect:+.2f} pp  95% CI [{100 * r.ci_low:+.2f}, {100 * r.ci_high:+.2f}]"
+              f"  p = {r.p_value:.4f}  BH discoveries: {r.discoveries_hot} hot, {r.discoveries_cold} cold"
+              f"  (of {r.n_players})")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("season", nargs="?", default="2025-26")
+    season = parser.parse_args().season
+
+    print(f"Season {season}")
+    shots = pd.read_parquet(INTERIM_DIR / f"shots_{season}.parquet")
+    players, streaks, league, draws = analyse_season(shots)
 
     out_dir = PROCESSED_DIR / season
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -159,12 +178,7 @@ def main():
         INTERIM_DIR / f"draws_{season}.npz", player_id=tested_ids,
         **{f"{kind}_k{k}": np.vstack(draws[k][kind]) for k in KS for kind in ("null", "boot")},
     )
-
-    print("\nLeague-wide (shot-weighted mean of player effects, percentage points):")
-    for r in league.itertuples():
-        print(f"  k={r.k}: {100 * r.effect:+.2f} pp  95% CI [{100 * r.ci_low:+.2f}, {100 * r.ci_high:+.2f}]"
-              f"  p = {r.p_value:.4f}  BH discoveries: {r.discoveries_hot} hot, {r.discoveries_cold} cold"
-              f"  (of {r.n_players})")
+    print_league(league)
     print(f"\nSaved {out_dir}/players.csv, streaks.csv, league.csv")
 
 

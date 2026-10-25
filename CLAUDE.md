@@ -17,8 +17,9 @@ NBA hot-hand website: Python pipeline → static JSON → static site (Vite + Ty
 - Downloads run locally, throttled, with retries and caching.
 
 ## Status
-- 2026-10-25: Milestone 1 done (commit 6a2cd2e): every 2025-26 player (284 tested, ≥ 300 FGA). Result: no BH discoveries; league effect −1.0 / −1.3 / −2.0 pp (k = 1/2/3), likely shot selection + putbacks (not yet controlled); power is low per player-season (see DECISIONS.md).
-- 2026-10-25: Milestone 2 complete (waiting for user OK, not yet committed): static site in `site/` (home + all 582 player pages, search, Vitest tests), data from `pipeline/build_json.py`. Open: putback check now or keep in Milestone 4? Next: Milestone 3.
+- 2026-10-25: Milestone 1 done (commit 6a2cd2e): every 2025-26 player (284 tested, ≥ 300 FGA). Result: no BH discoveries; league effect −1.0 / −1.3 / −2.0 pp (k = 1/2/3), likely shot selection (not yet controlled); power is low per player-season (see DECISIONS.md).
+- 2026-10-25: Milestone 2 done (commit 642a397): static site in `site/` (home + all 582 player pages, search, Vitest tests), data from `pipeline/build_json.py`.
+- 2026-10-25: Putback sensitivity check done (`pipeline/sensitivity_putbacks.py`): removing putbacks/tip-ins explains only 8–22% of the negative league effect (k = 3: −2.0 → −1.6 pp); site wording updated. Not yet committed. Next: Milestone 3.
 - Hosting: GitHub Pages (user has a GitHub account). Repo not yet pushed to GitHub; do that when we deploy.
 
 ## How to run

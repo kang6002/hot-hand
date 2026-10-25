@@ -58,6 +58,14 @@ def power_rows(path=PROCESSED_DIR / "power_curve.csv"):
             for _, r in power.iterrows()]
 
 
+def sensitivity_rows(path):
+    """League result without putbacks/tip-ins (pipeline/sensitivity_putbacks.py), if it has been run."""
+    if not path.exists():
+        return []
+    return [{"k": int(r.k), "effect": num(r.effect), "ci_low": num(r.ci_low), "ci_high": num(r.ci_high),
+             "p_value": num(r.p_value, 6)} for r in pd.read_csv(path).itertuples()]
+
+
 def player_json(season, p, rows, games, null_draws):
     """One player's file."""
     ks = []
@@ -134,6 +142,7 @@ def main():
                      "q_value": num(r.q_value), "discovery": str(r.discovery) == "True"}
                     for r in tested.itertuples()],
         "power": power_rows(),
+        "no_putbacks": sensitivity_rows(folder / "sensitivity_no_putbacks" / "league.csv"),
         "attribution": ATTRIBUTION,
     }
     (SITE_DATA / "league.json").write_text(json.dumps(league_json, separators=(",", ":"), ensure_ascii=False))

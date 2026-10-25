@@ -101,6 +101,8 @@ export interface League {
   ks: LeagueK[];
   players: LeaguePlayer[];
   power: PowerRow[];
+  /** League result without putbacks and tip-ins (sensitivity check); empty if not run */
+  no_putbacks: { k: number; effect: number; ci_low: number; ci_high: number; p_value: number }[];
 }
 
 const cache = new Map<string, Promise<unknown>>();

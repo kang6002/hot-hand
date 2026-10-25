@@ -22,6 +22,13 @@ function leagueSentence(league: League, k: number): string {
   return `${overall} ${individual}`;
 }
 
+function putbackNote(league: League, k: number): string {
+  const main = league.ks.find((r) => r.k === k);
+  const np = league.no_putbacks?.find((r) => r.k === k);
+  if (!main || !np) return "";
+  return `<li>Putbacks and tip-ins mostly follow misses and go in often, but they explain only part of it: without them, the effect after ${k} makes in a row is ${pp(np.effect)} (95% CI ${ppInterval(np.ci_low, np.ci_high)}) instead of ${pp(main.effect)}.</li>`;
+}
+
 export async function renderHome(app: HTMLElement, go: (id: number) => void): Promise<void> {
   const [index, league] = await Promise.all([loadIndex(), loadLeague()]);
   document.title = "Is the Hot Hand Real?";
@@ -55,7 +62,8 @@ export async function renderHome(app: HTMLElement, go: (id: number) => void): Pr
       <strong>What this does and doesn't show.</strong>
       <ul>
         <li>The numbers compare a player's shots after makes with their shots after misses <em>in the same game</em>, minus the difference that luck alone would produce.</li>
-        <li>A negative value doesn't mean "cold hands" in ability. After making shots, players may take harder shots and defenders may tighten up; putbacks and tip-ins (which go in often) mostly follow misses. We don't adjust for shot difficulty yet.</li>
+        <li>A negative value doesn't mean "cold hands" in ability. After making shots, players may take harder shots and defenders may tighten up. We don't adjust for shot difficulty yet.</li>
+        ${putbackNote(league, headline)}
         <li>"No detectable effect" is not the same as "no hot hand": with one season of shots, only large effects can be detected for a single player.</li>
       </ul>
     </div>

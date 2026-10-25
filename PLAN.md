@@ -28,7 +28,7 @@ For each player, k = 1, 2, 3:
 9. Minimum 300 career FGA to run the test and enter the FDR family; every player stays searchable, those below the threshold show basic stats and "not enough shots for a reliable test".
 10. League-wide pooled estimate: shot-weighted mean of per-player effects; null by combining permutation draw b across players. Per season and all-time.
 11. Wording: effect sizes and uncertainty; "no detectable effect", never "no hot hand".
-12. Limitations to state in the UI: shot difficulty (control for distance/zone later); putbacks/tip-ins follow misses and go in often (sensitivity analysis later); missed shots on shooting fouls are not recorded as FGA.
+12. Limitations to state in the UI: shot difficulty (control for distance/zone later); putbacks/tip-ins follow misses and go in often (sensitivity analysis done 2026-10-25 for 2025-26, `pipeline/sensitivity_putbacks.py`; repeat in Milestone 3); missed shots on shooting fouls are not recorded as FGA.
 
 Tests (pytest): hand-built sequences (incl. streaks that would wrongly cross games); naive D_k biased down in one long sequence and biased up with good/bad nights, while the corrected effect ≈ 0 in both; false-positive rate ≈ 5% at α = 0.05 (3.8–6.2% over 2,000 sims, all k); CI coverage ≈ 95% (≥ 92.5% over 2,000 sims); simulated hot-hand shooters detected, plus a power curve by shot count and effect size; simulated i.i.d. league → ≈ 0 BH discoveries.
 
@@ -44,4 +44,4 @@ Pages: Home (league result + search), Player (career + per-season analysis, cond
 1. MVP: 2025-26 regular season, every player (changed from 5 star players on 2026-10-25, see DECISIONS.md). Feasibility probe, download, clean, stats, tests, power curve, matplotlib plots. The 284 players with ≥ 300 FGA get the full test with BH-FDR across them; the rest get basic stats only. Includes the 2025-26 league-wide pooled estimate.
 2. Static site with player pages for every 2025-26 player, plus search (too many players to list by hand).
 3. Scale to all seasons 1996-97 → 2025-26 and every player: career + per-season analysis, search, league page with BH-FDR, Method and About pages, deploy.
-4. Future ideas (don't build yet): playoffs vs regular season, shot-difficulty control (distance/zone), putback sensitivity analysis, player comparisons, shareable comparison links.
+4. Future ideas (don't build yet): playoffs vs regular season, shot-difficulty control (distance/zone), player comparisons, shareable comparison links. (Putback sensitivity analysis was moved forward at the user's request, 2026-10-25.)
