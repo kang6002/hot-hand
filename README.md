@@ -4,7 +4,7 @@
 
 Does an NBA player's next shot go in more often after a streak of makes? This project tests that question for
 every player, using every regular-season field-goal attempt since 1996-97 (when shot-level data begins):
-5.8 million shots and about 2,800 players. Every player has a searchable page with an effect size, a confidence
+5.9 million shots and about 2,800 players. Every player has a searchable page with an effect size, a confidence
 interval and a plain-English verdict.
 
 ## Results
