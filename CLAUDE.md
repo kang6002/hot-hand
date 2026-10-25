@@ -19,8 +19,8 @@ NBA hot-hand website: Python pipeline → static JSON → static site (Vite + Ty
 ## Status
 - 2026-10-25: Milestone 1 done (commit a822c7c): every 2025-26 player (284 tested, ≥ 300 FGA). Result: no BH discoveries; league effect −1.0 / −1.3 / −2.0 pp (k = 1/2/3), likely shot selection (not yet controlled); power is low per player-season (see DECISIONS.md).
 - 2026-10-25: Milestone 2 done (commit bbb3872): static site in `site/` (home + all 582 player pages, search, Vitest tests), data from `pipeline/build_json.py`.
-- 2026-10-25: Putback check done (commit ee69cbe). Milestone 3 complete locally (not yet committed or published): 30 seasons, career test for 1,676 players (0 hot; 19/7/0 cold for k = 1/2/3; league −1.1 to −1.2 pp), per-season estimates, site with League/Method/About pages, README, MIT licence, deploy workflow.
-- Publishing: user chose public repo `kang6002/hot-hand`, commit identity "Kang Rui Li" + GitHub noreply email, MIT, read NBA terms. `gh` installed in `~/.local/gh` and logged in. Waiting for the user's "OK to publish" after checking the local preview.
+- 2026-10-25: Putback check done (commit ee69cbe). Milestone 3: 30 seasons, career test for 1,676 players (0 hot; 19/7/0 cold for k = 1/2/3; league −1.1 to −1.2 pp), per-season estimates, site with League/Method/About pages, README, MIT licence, deploy workflow.
+- 2026-10-25: Milestone 3 published (commit d4a382c + label fix): https://github.com/kang6002/hot-hand, live at https://kang6002.github.io/hot-hand/ (GitHub Pages via `.github/workflows/deploy.yml`; every push to main redeploys). Commit identity "Kang Rui Li" + GitHub noreply email; MIT; `gh` in `~/.local/gh`, logged in.
 - Next idea (Milestone 4): shot-difficulty control (distance/zone), the most likely explanation of the negative effect.
 
 ## How to run
