@@ -8,6 +8,12 @@ import { pct, pctInterval, pp, ppInterval, qText, verdict } from "./format";
 // Axis ticks in percentage points: "-4.5", "-4", "0" (one decimal only when needed)
 const ppTick = (d: number) => `${+(100 * d).toFixed(1)}`;
 
+// Season labels: show every n-th one when the chart is too narrow for all (~26 px per rotated label)
+function seasonTicks(seasons: string[], width: number): string[] {
+  const step = Math.max(1, Math.ceil((seasons.length * 26) / Math.max(1, width - 60)));
+  return seasons.filter((_, i) => i % step === 0);
+}
+
 const css = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
 function baseStyle() {
@@ -205,7 +211,7 @@ export function seasonChart(player: Player, k: number): Render {
       marginBottom: 44,
       style: baseStyle(),
       ariaLabel: `${player.name}: effect after ${k} makes in a row, season by season, with 95% confidence intervals`,
-      x: { label: null, domain: rows.map((d) => d.season), tickFormat: (s: string) => s.slice(2), tickRotate: rows.length > 10 ? -45 : 0 },
+      x: { label: null, domain: rows.map((d) => d.season), ticks: seasonTicks(rows.map((d) => d.season), width), tickFormat: (s: string) => s.slice(2), tickRotate: rows.length > 10 ? -45 : 0 },
       y: { label: "Effect (pp) with 95% CI", grid: true, tickFormat: ppTick },
       marks: [
         Plot.ruleY([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),
@@ -232,7 +238,7 @@ export function leagueSeasonsChart(seasons: LeagueSeasonK[], allTime: { effect: 
       marginBottom: 44,
       style: baseStyle(),
       ariaLabel: `League-wide effect after ${k} makes in a row, season by season from ${rows[0]?.season} to ${rows.at(-1)?.season}, with 95% confidence intervals`,
-      x: { label: null, domain: rows.map((d) => d.season), tickFormat: (s: string) => s.slice(2), tickRotate: -45 },
+      x: { label: null, domain: rows.map((d) => d.season), ticks: seasonTicks(rows.map((d) => d.season), width), tickFormat: (s: string) => s.slice(2), tickRotate: -45 },
       y: { label: "League-wide effect (pp) with 95% CI", grid: true, tickFormat: ppTick },
       marks: [
         Plot.ruleY([0], { stroke: css("--ink-2"), strokeDasharray: "2 3" }),
